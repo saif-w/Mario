@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة سوبر ماريو</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #87CEEB, #98FB98);
+            font-family: 'Arial', sans-serif;
+            overflow-x: hidden;
+        }
+
+        #gameCanvas {
+            border: 3px solid #8B4513;
+            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 70%, #228B22 70%, #228B22 100%);
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            touch-action: manipulation;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.1s;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .character-upload {
+            margin: 15px 0;
+            padding: 10px;
+            border: 2px dashed #5D5CDE;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .character-upload:hover {
+            background-color: #f0f0ff;
+            border-color: #4a49c0;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                bottom: 10px;
+                gap: 5px;
+            }
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 18px;
+            }
+        }
+
+        .dark body {
+            background: linear-gradient(to bottom, #2c3e50, #27ae60);
+        }
+
+        .dark .menu {
+            background: rgba(30, 30, 30, 0.95);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="startMenu" class="menu">
+        <h1 class="text-3xl font-bold text-[#5D5CDE] mb-6">🍄 لعبة سوبر ماريو 🍄</h1>
+        <div class="character-upload">
+            <p class="text-lg mb-3">اختر شخصيتك المفضلة</p>
+            <input type="file" id="characterUpload" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('characterUpload').click()" 
+                    class="bg-[#5D5CDE] text-white px-6 py-3 rounded-lg hover:bg-[#4a49c0] transition-all text-base">
+                📷 رفع صورة
+            </button>
+            <p class="text-sm text-gray-600 mt-2">أو استخدم الشخصية الافتراضية 🦸‍♂️</p>
+        </div>
+        <button id="startBtn" class="bg-green-500 text-white px-8 py-4 text-xl rounded-lg hover:bg-green-600 transition-all">
+            🎮 ابدأ اللعبة
+        </button>
+    </div>
+
+    <div id="gameOverMenu" class="menu hidden">
+        <h2 class="text-2xl font-bold text-red-500 mb-4">💀 انتهت اللعبة</h2>
+        <p id="finalScore" class="text-lg mb-4"></p>
+        <p id="finalLevel" class="text-lg mb-6"></p>
+        <button id="restartBtn" class="bg-[#5D5CDE] text-white px-6 py-3 rounded-lg hover:bg-[#4a49c0] transition-all text-base">
+            🔄 العب مرة أخرى
+        </button>
+    </div>
+
+    <div id="levelCompleteMenu" class="menu hidden">
+        <h2 class="text-2xl font-bold text-green-500 mb-4">🎉 مبروك!</h2>
+        <p id="levelScore" class="text-lg mb-4"></p>
+        <button id="nextLevelBtn" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-all text-base">
+            ➡️ المرحلة التالية
+        </button>
+    </div>
+
+    <div id="gameInfo" class="fixed top-4 left-4 bg-white bg-opacity-90 p-3 rounded-lg shadow-lg text-right">
+        <div class="text-lg font-bold">المرحلة: <span id="levelDisplay">1</span></div>
+        <div class="text-lg font-bold">النقاط: <span id="scoreDisplay">0</span></div>
+        <div class="text-lg font-bold">الحياة: <span id="livesDisplay">3</span></div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+    <div class="controls">
+        <button id="leftBtn" class="control-btn bg-blue-500 text-white">◀</button>
+        <button id="jumpBtn" class="control-btn bg-green-500 text-white">▲</button>
+        <button id="rightBtn" class="control-btn bg-blue-500 text-white">▶</button>
+    </div>
+
+    <div class="text-center mt-4 text-sm text-gray-600">
+        استخدم الأسهم أو الأزرار للحركة | مسافة للقفز
+    </div>
+
+    <script>
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game state
+        let gameState = 'menu'; // menu, playing, gameOver, levelComplete
+        let currentLevel = 1;
+        let score = 0;
+        let lives = 3;
+        let playerImage = null;
+
+        // Player object
+        const player = {
+            x: 50,
+            y: 300,
+            width: 40,
+            height: 40,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 5,
+            jumpPower: 15,
+            onGround: false,
+            direction: 1
+        };
+
+        // Game objects
+        let platforms = [];
+        let enemies = [];
+        let coins = [];
+        let goal = {};
+
+        // Input handling
+        const keys = {};
+        let touchControls = {
+            left: false,
+            right: false,
+            jump: false
+        };
+
+        // Level configurations
+        const levels = [
+            {
+                // Level 1 - Easy
+                platforms: [
+                    {x: 0, y: 360, width: 800, height: 40}, // Ground
+                    {x: 200, y: 280, width: 100, height: 20},
+                    {x: 400, y: 200, width: 100, height: 20},
+                    {x: 600, y: 280, width: 100, height: 20}
+                ],
+                enemies: [
+                    {x: 300, y: 330, width: 30, height: 30, speed: 1, direction: 1, range: 100, type: 'goomba'},
+                    {x: 450, y: 170, width: 30, height: 30, speed: 0.8, direction: -1, range: 80, type: 'goomba'}
+                ],
+                coins: [
+                    {x: 230, y: 240, collected: false},
+                    {x: 430, y: 160, collected: false},
+                    {x: 630, y: 240, collected: false}
+                ],
+                goal: {x: 750, y: 310, width: 30, height: 50}
+            },
+            {
+                // Level 2 - Medium
+                platforms: [
+                    {x: 0, y: 360, width: 800, height: 40},
+                    {x: 150, y: 300, width: 80, height: 20},
+                    {x: 300, y: 240, width: 80, height: 20},
+                    {x: 450, y: 180, width: 80, height: 20},
+                    {x: 600, y: 240, width: 80, height: 20}
+                ],
+                enemies: [
+                    {x: 200, y: 330, width: 30, height: 30, speed: 1.5, direction: 1, range: 120, type: 'goomba'},
+                    {x: 350, y: 210, width: 30, height: 30, speed: 1.2, direction: -1, range: 70, type: 'goomba'},
+                    {x: 500, y: 330, width: 30, height: 30, speed: 1.5, direction: -1, range: 120, type: 'goomba'}
+                ],
+                coins: [
+                    {x: 170, y: 260, collected: false},
+                    {x: 320, y: 200, collected: false},
+                    {x: 470, y: 140, collected: false},
+                    {x: 620, y: 200, collected: false}
+                ],
+                goal: {x: 750, y: 310, width: 30, height: 50}
+            },
+            {
+                // Level 3 - Hard
+                platforms: [
+                    {x: 0, y: 360, width: 800, height: 40},
+                    {x: 100, y: 320, width: 60, height: 20},
+                    {x: 200, y: 260, width: 60, height: 20},
+                    {x: 320, y: 200, width: 60, height: 20},
+                    {x: 440, y: 140, width: 60, height: 20},
+                    {x: 560, y: 200, width: 60, height: 20},
+                    {x: 680, y: 260, width: 60, height: 20}
+                ],
+                enemies: [
+                    {x: 150, y: 330, width: 30, height: 30, speed: 2, direction: 1, range: 80, type: 'goomba'},
+                    {x: 250, y: 230, width: 30, height: 30, speed: 1.8, direction: -1, range: 50, type: 'goomba'},
+                    {x: 370, y: 170, width: 30, height: 30, speed: 1.5, direction: 1, range: 60, type: 'goomba'},
+                    {x: 500, y: 330, width: 30, height: 30, speed: 2, direction: 1, range: 80, type: 'goomba'},
+                    {x: 610, y: 170, width: 30, height: 30, speed: 1.8, direction: -1, range: 50, type: 'goomba'}
+                ],
+                coins: [
+                    {x: 120, y: 280, collected: false},
+                    {x: 220, y: 220, collected: false},
+                    {x: 340, y: 160, collected: false},
+                    {x: 460, y: 100, collected: false},
+                    {x: 580, y: 160, collected: false}
+                ],
+                goal: {x: 750, y: 310, width: 30, height: 50}
+            },
+            {
+                // Level 4 - Expert
+                platforms: [
+                    {x: 0, y: 360, width: 800, height: 40},
+                    {x: 80, y: 330, width: 50, height: 20},
+                    {x: 160, y: 280, width: 50, height: 20},
+                    {x: 240, y: 230, width: 50, height: 20},
+                    {x: 320, y: 180, width: 50, height: 20},
+                    {x: 400, y: 130, width: 50, height: 20},
+                    {x: 480, y: 180, width: 50, height: 20},
+                    {x: 560, y: 230, width: 50, height: 20},
+                    {x: 640, y: 280, width: 50, height: 20}
+                ],
+                enemies: [
+                    {x: 120, y: 330, width: 30, height: 30, speed: 2.5, direction: 1, range: 60, type: 'goomba'},
+                    {x: 190, y: 250, width: 30, height: 30, speed: 2.2, direction: -1, range: 40, type: 'goomba'},
+                    {x: 270, y: 200, width: 30, height: 30, speed: 2, direction: 1, range: 45, type: 'goomba'},
+                    {x: 350, y: 150, width: 30, height: 30, speed: 2.3, direction: -1, range: 35, type: 'goomba'},
+                    {x: 430, y: 100, width: 30, height: 30, speed: 1.8, direction: 1, range: 40, type: 'goomba'},
+                    {x: 510, y: 150, width: 30, height: 30, speed: 2.5, direction: -1, range: 35, type: 'goomba'},
+                    {x: 590, y: 200, width: 30, height: 30, speed: 2.2, direction: 1, range: 40, type: 'goomba'}
+                ],
+                coins: [
+                    {x: 100, y: 290, collected: false},
+                    {x: 180, y: 240, collected: false},
+                    {x: 260, y: 190, collected: false},
+                    {x: 340, y: 140, collected: false},
+                    {x: 420, y: 90, collected: false},
+                    {x: 500, y: 140, collected: false}
+                ],
+                goal: {x: 750, y: 310, width: 30, height: 50}
+            }
+        ];
+
+        // Initialize level
+        function initLevel(levelNum) {
+            const level = levels[levelNum - 1];
+            platforms = [...level.platforms];
+            enemies = level.enemies.map(e => ({...e, startX: e.x}));
+            coins = level.coins.map(c => ({...c, collected: false}));
+            goal = {...level.goal};
+            
+            // Reset player position
+            player.x = 50;
+            player.y = 300;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            player.onGround = false;
+        }
+
+        // Handle character upload
+        document.getElementById('characterUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        playerImage = img;
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
+        document.getElementById('nextLevelBtn').addEventListener('click', nextLevel);
+
+        // Touch controls
+        document.getElementById('leftBtn').addEventListener('touchstart', () => touchControls.left = true);
+        document.getElementById('leftBtn').addEventListener('touchend', () => touchControls.left = false);
+        document.getElementById('rightBtn').addEventListener('touchstart', () => touchControls.right = true);
+        document.getElementById('rightBtn').addEventListener('touchend', () => touchControls.right = false);
+        document.getElementById('jumpBtn').addEventListener('touchstart', () => touchControls.jump = true);
+        document.getElementById('jumpBtn').addEventListener('touchend', () => touchControls.jump = false);
+
+        // Mouse controls for desktop
+        document.getElementById('leftBtn').addEventListener('mousedown', () => touchControls.left = true);
+        document.getElementById('leftBtn').addEventListener('mouseup', () => touchControls.left = false);
+        document.getElementById('rightBtn').addEventListener('mousedown', () => touchControls.right = true);
+        document.getElementById('rightBtn').addEventListener('mouseup', () => touchControls.right = false);
+        document.getElementById('jumpBtn').addEventListener('mousedown', () => touchControls.jump = true);
+        document.getElementById('jumpBtn').addEventListener('mouseup', () => touchControls.jump = false);
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        function startGame() {
+            gameState = 'playing';
+            document.getElementById('startMenu').classList.add('hidden');
+            initLevel(currentLevel);
+            gameLoop();
+        }
+
+        function restartGame() {
+            currentLevel = 1;
+            score = 0;
+            lives = 3;
+            gameState = 'playing';
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            initLevel(currentLevel);
+        }
+
+        function nextLevel() {
+            currentLevel++;
+            if (currentLevel > 4) {
+                // Game completed
+                gameState = 'gameOver';
+                document.getElementById('levelCompleteMenu').classList.add('hidden');
+                document.getElementById('finalScore').textContent = `النقاط النهائية: ${score}`;
+                document.getElementById('finalLevel').textContent = 'مبروك! أكملت جميع المراحل! 🏆';
+                document.getElementById('gameOverMenu').classList.remove('hidden');
+            } else {
+                document.getElementById('levelCompleteMenu').classList.add('hidden');
+                initLevel(currentLevel);
+            }
+        }
+
+        function updatePlayer() {
+            // Handle input
+            if (keys['ArrowLeft'] || keys['a'] || touchControls.left) {
+                player.velocityX = -player.speed;
+                player.direction = -1;
+            } else if (keys['ArrowRight'] || keys['d'] || touchControls.right) {
+                player.velocityX = player.speed;
+                player.direction = 1;
+            } else {
+                player.velocityX *= 0.8; // Friction
+            }
+
+            if ((keys[' '] || keys['ArrowUp'] || keys['w'] || touchControls.jump) && player.onGround) {
+                player.velocityY = -player.jumpPower;
+                player.onGround = false;
+            }
+
+            // Apply gravity
+            player.velocityY += 0.8;
+
+            // Update position
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+
+            // Keep player in bounds
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+
+            // Check platform collisions
+            player.onGround = false;
+            for (let platform of platforms) {
+                if (player.x < platform.x + platform.width &&
+                    player.x + player.width > platform.x &&
+                    player.y < platform.y + platform.height &&
+                    player.y + player.height > platform.y) {
+                    
+                    if (player.velocityY > 0 && player.y < platform.y) {
+                        player.y = platform.y - player.height;
+                        player.velocityY = 0;
+                        player.onGround = true;
+                    }
+                }
+            }
+
+            // Check if player fell
+            if (player.y > canvas.height) {
+                lives--;
+                if (lives <= 0) {
+                    gameState = 'gameOver';
+                } else {
+                    // Reset player position
+                    player.x = 50;
+                    player.y = 300;
+                    player.velocityX = 0;
+                    player.velocityY = 0;
+                }
+            }
+        }
+
+        function updateEnemies() {
+            for (let enemy of enemies) {
+                enemy.x += enemy.speed * enemy.direction;
+                
+                // Bounce off boundaries
+                if (enemy.x <= enemy.startX - enemy.range || enemy.x >= enemy.startX + enemy.range) {
+                    enemy.direction *= -1;
+                }
+
+                // Check collision with player
+                if (player.x < enemy.x + enemy.width &&
+                    player.x + player.width > enemy.x &&
+                    player.y < enemy.y + enemy.height &&
+                    player.y + player.height > enemy.y) {
+                    
+                    lives--;
+                    if (lives <= 0) {
+                        gameState = 'gameOver';
+                    } else {
+                        // Reset player position
+                        player.x = 50;
+                        player.y = 300;
+                        player.velocityX = 0;
+                        player.velocityY = 0;
+                    }
+                }
+            }
+        }
+
+        function updateCoins() {
+            for (let coin of coins) {
+                if (!coin.collected &&
+                    player.x < coin.x + 20 &&
+                    player.x + player.width > coin.x &&
+                    player.y < coin.y + 20 &&
+                    player.y + player.height > coin.y) {
+                    
+                    coin.collected = true;
+                    score += 100;
+                }
+            }
+        }
+
+        function checkGoal() {
+            if (player.x < goal.x + goal.width &&
+                player.x + player.width > goal.x &&
+                player.y < goal.y + goal.height &&
+                player.y + player.height > goal.y) {
+                
+                gameState = 'levelComplete';
+                score += 500; // Bonus for completing level
+            }
+        }
+
+        function drawGoomba(x, y, width, height, direction) {
+            // Main body (brown mushroom shape)
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.arc(x + width/2, y + height - 5, width/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Head (lighter brown)
+            ctx.fillStyle = '#CD853F';
+            ctx.beginPath();
+            ctx.arc(x + width/2, y + height/2, width/3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            ctx.fillStyle = '#000000';
+            const eyeSize = 3;
+            const eyeY = y + height/2 - 3;
+            if (direction === 1) {
+                // Looking right
+                ctx.fillRect(x + width/2 - 6, eyeY, eyeSize, eyeSize);
+                ctx.fillRect(x + width/2 + 1, eyeY, eyeSize, eyeSize);
+            } else {
+                // Looking left
+                ctx.fillRect(x + width/2 - 4, eyeY, eyeSize, eyeSize);
+                ctx.fillRect(x + width/2 + 3, eyeY, eyeSize, eyeSize);
+            }
+            
+            // Angry eyebrows
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(x + width/2 - 8, eyeY - 2, 6, 2);
+            ctx.fillRect(x + width/2 + 2, eyeY - 2, 6, 2);
+            
+            // Mouth (frown)
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(x + width/2 - 2, y + height/2 + 5, 4, 1);
+            
+            // Little feet
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(x + 3, y + height - 3, 4, 3);
+            ctx.fillRect(x + width - 7, y + height - 3, 4, 3);
+            
+            // Shadow effect
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(x - 2, y + height, width + 4, 2);
+        }
+
+        function render() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw platforms
+            ctx.fillStyle = '#8B4513';
+            for (let platform of platforms) {
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            }
+
+            // Draw enemies (Goombas)
+            for (let enemy of enemies) {
+                drawGoomba(enemy.x, enemy.y, enemy.width, enemy.height, enemy.direction);
+            }
+
+            // Draw coins
+            ctx.fillStyle = '#FFD700';
+            for (let coin of coins) {
+                if (!coin.collected) {
+                    ctx.beginPath();
+                    ctx.arc(coin.x + 10, coin.y + 10, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Add $ symbol
+                    ctx.fillStyle = '#000000';
+                    ctx.font = '12px Arial';
+                    ctx.fillText('💰', coin.x + 3, coin.y + 15);
+                    ctx.fillStyle = '#FFD700';
+                }
+            }
+
+            // Draw goal
+            ctx.fillStyle = '#00FF00';
+            ctx.fillRect(goal.x, goal.y, goal.width, goal.height);
+            ctx.fillStyle = '#000000';
+            ctx.font = '20px Arial';
+            ctx.fillText('🏁', goal.x + 5, goal.y + 25);
+
+            // Draw player
+            if (playerImage) {
+                ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
+            } else {
+                ctx.fillStyle = '#0000FF';
+                ctx.fillRect(player.x, player.y, player.width, player.height);
+                // Add face
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(player.x + 8, player.y + 8, 6, 6);
+                ctx.fillRect(player.x + 20, player.y + 8, 6, 6);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(player.x + 10, player.y + 10, 2, 2);
+                ctx.fillRect(player.x + 22, player.y + 10, 2, 2);
+                ctx.fillRect(player.x + 15, player.y + 20, 8, 2);
+            }
+
+            // Update UI
+            document.getElementById('levelDisplay').textContent = currentLevel;
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('livesDisplay').textContent = lives;
+        }
+
+        function gameLoop() {
+            if (gameState === 'playing') {
+                updatePlayer();
+                updateEnemies();
+                updateCoins();
+                checkGoal();
+                render();
+                requestAnimationFrame(gameLoop);
+            } else if (gameState === 'gameOver') {
+                document.getElementById('finalScore').textContent = `النقاط النهائية: ${score}`;
+                document.getElementById('finalLevel').textContent = `وصلت إلى المرحلة: ${currentLevel}`;
+                document.getElementById('gameOverMenu').classList.remove('hidden');
+            } else if (gameState === 'levelComplete') {
+                document.getElementById('levelScore').textContent = `أكملت المرحلة ${currentLevel}! النقاط: ${score}`;
+                document.getElementById('levelCompleteMenu').classList.remove('hidden');
+            }
+        }
+
+        // Prevent zoom on mobile
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>

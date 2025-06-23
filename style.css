@@ -1,0 +1,55 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  overflow: hidden;
+  background: url("assets/bg.png") repeat-x;
+  background-size: cover;
+}
+
+#score {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: white;
+  font-size: 24px;
+  z-index: 10;
+}
+
+.game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+.ground {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 100px;
+  background: #3b7a3b;
+}
+
+#player, .enemy, .coin, .power, #pookie {
+  position: absolute;
+  bottom: 100px;
+  width: 50px;
+  height: 50px;
+  image-rendering: pixelated;
+}
+
+.coin {
+  width: 30px;
+  height: 30px;
+  bottom: 150px;
+}
+
+.power {
+  width: 40px;
+  height: 40px;
+  bottom: 140px;
+}
+
+#pookie {
+  width: 60px;
+  height: 60px;
+}
